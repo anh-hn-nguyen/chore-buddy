@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+        <meta name="description" content="something something">
+        <title>Chore Buddy</title>
+        <link rel="icon" href="icon.jpeg">
+        <link rel="stylesheet" href="style.css">
+        <script src="index.js" defer></script>
+    </head>
+    <body>
+        <header>
+            <nav>
+                <ul>
+                    <li><a href="">Home</a></li>
+                    <li><a href="">About</a></li>
+                </ul>
+                <form>
+                    <p>
+                        <label for="uname">Hi, what's your name?</label>
+                        <input type="text" id="uname" name="uname">
+                        <button type="submit">Hello</button>
+                    </p>
+                    <p>
+                        <label>Want me to forget you?</label>
+                        <button type="submit">Goodbye</button>
+                    </p>
+                </form>
+            </nav>
+            <div>
+                <img src="icon.jpeg">
+            </div>
+            <h1>Chore Buddy</h1>
+        </header>
+        <main>
+            <button type="submit" id="sortChores">Sort chores</button>
+            <section>
+                <h2>Your chores</h2>
+                <ul>
+                </ul>
+
+            </section>
+            <form id="addChoreForm">
+                <h2>Add a new chore</h2>
+
+                <p>
+                    <label>Name</label>
+                    <input type="text" id="choreName" name="choreName">
+                </p>
+                <p>
+                    <label>Notes</label>
+                    <input type="text" id="choreDesc" name="choreDesc"></input>
+                </p>
+                <p>
+                    <label>Must be done after:</label>
+                    <select multiple id="choresParentSelect" name="choreParents">
+                    </select>
+                </p>
+                <p>
+                    <button type="submit" id="addChore">Add chore</button>
+                </p>
+            </form>
+        </main>
+        <footer></footer>
+    </body>
+</html>
