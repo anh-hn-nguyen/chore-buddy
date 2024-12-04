@@ -31,11 +31,13 @@
                 <img src="icon.jpeg">
             </div>
             <h1>Chore Buddy</h1>
+            <p>Buddy introduces himself blah blah</p>
         </header>
         <main>
             <button type="submit" id="sortChores">Sort chores</button>
             <section>
                 <h2>Your chores</h2>
+                <p id="sortError"></p>
                 <ul>
                 </ul>
 
@@ -52,8 +54,8 @@
                     <input type="text" id="choreDesc" name="choreDesc"></input>
                 </p>
                 <p>
-                    <label>Must be done after:</label>
-                    <select multiple id="choresParentSelect" name="choreParents">
+                    <label>Must be completed before:</label>
+                    <select multiple id="choresChildrenSelect" name="choreChildren">
                     </select>
                 </p>
                 <p>
