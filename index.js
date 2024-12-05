@@ -3,7 +3,7 @@ const choreDescInput = document.querySelector("#choreDesc");
 const choresChildrenSelect = document.querySelector("#choresChildrenSelect");
 const addChoreBtn = document.querySelector("#addChore");
 
-const choresWrapper = document.querySelector("main section ul");
+const choresList = document.querySelector("main section ul");
 const sortChoresBtn = document.querySelector("#sortChores");
 const reloadBtn = document.querySelector("#reload");
 const sortErrorPara = document.querySelector("#sortError");
@@ -64,8 +64,8 @@ sortChoresBtn.addEventListener("click", (event) => {
 })
 
 function displaySortError() {
-    while (choresWrapper.firstChild) {
-        choresWrapper.removeChild(choresWrapper.firstChild);
+    while (choresList.firstChild) {
+        choresList.removeChild(choresList.firstChild);
     }
 
     sortErrorPara.textContent = "Please check your chores again. Cycle detected.";
@@ -169,13 +169,13 @@ function updateSelectOptions() {
         choresChildrenSelect.appendChild(option);
     }
 
-    choresChildrenSelect.size = Math.min(3, allChores.length);
+    choresChildrenSelect.size = Math.max(1, Math.min(3, allChores.length));
 }
 
 
 function displayData(chores) {
-    while (choresWrapper.firstChild) {
-        choresWrapper.removeChild(choresWrapper.firstChild);
+    while (choresList.firstChild) {
+        choresList.removeChild(choresList.firstChild);
     }
     const indexMap = createIndexMap(chores); // map key of each object (chore) to its current index in the list, so later an parent object can be retrieved by the key
     
@@ -223,7 +223,7 @@ function displayData(chores) {
         li.appendChild(editBtn);
         li.appendChild(deleteBtn);
     
-        choresWrapper.appendChild(li);
+        choresList.appendChild(li);
     }
 
 }
