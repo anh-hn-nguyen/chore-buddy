@@ -15,7 +15,7 @@
                     <li><a href="">Home</a></li>
                     <li><a href="">About</a></li>
                 </ul>
-                <form>
+                <!-- <form>
                     <p>
                         <label for="uname">Hi, what's your name?</label>
                         <input type="text" id="uname" name="uname">
@@ -25,16 +25,17 @@
                         <label>Want me to forget you?</label>
                         <button type="submit">Goodbye</button>
                     </p>
-                </form>
+                </form> -->
             </nav>
             <div>
                 <img src="icon.jpeg">
             </div>
-            <h1>Chore Buddy</h1>
+            <h1>Welcome to your Chore Buddy</h1>
             <p>Buddy introduces himself blah blah</p>
         </header>
         <main>
             <button type="submit" id="sortChores">Sort chores</button>
+            <button type="submit" id="reload">Reload</button>
             <section>
                 <h2>Your chores</h2>
                 <p id="sortError"></p>
@@ -46,15 +47,15 @@
                 <h2>Add a new chore</h2>
 
                 <p>
-                    <label>Name</label>
+                    <label for="choreName">Name</label>
                     <input type="text" id="choreName" name="choreName">
                 </p>
                 <p>
-                    <label>Notes</label>
+                    <label for="choreDesc">Notes</label>
                     <input type="text" id="choreDesc" name="choreDesc"></input>
                 </p>
                 <p>
-                    <label>Must be completed before:</label>
+                    <label for="choresChildrenSelect">Must be completed before:</label>
                     <select multiple id="choresChildrenSelect" name="choreChildren">
                     </select>
                 </p>

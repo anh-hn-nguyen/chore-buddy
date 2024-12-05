@@ -5,7 +5,7 @@ const addChoreBtn = document.querySelector("#addChore");
 
 const choresWrapper = document.querySelector("main section ul");
 const sortChoresBtn = document.querySelector("#sortChores");
-
+const reloadBtn = document.querySelector("#reload");
 const sortErrorPara = document.querySelector("#sortError");
 
 let db;
@@ -42,7 +42,6 @@ openRequest.addEventListener("success", (event) => {
     // store the openned db to variable
     db = openRequest.result;
 
-    // displayData(chores);
     readAndDisplayAllChores();
 })
 
@@ -73,6 +72,12 @@ function displaySortError() {
     sortErrorPara.textContent = "Please check your chores again. Cycle detected.";
 
 }
+
+reloadBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    sortErrorPara.textContent = "";
+    readAndDisplayAllChores();
+})
 
 addChoreBtn.addEventListener("click", (event) => {
     event.preventDefault();
@@ -228,23 +233,52 @@ function deleteItem(event) {
     // delete from the db
     const choreId = Number(event.target.parentNode.getAttribute("data-item-id"));
 
-    // create new transation to delet
+    // create transaction to update
     const transaction = db.transaction(["chores_os"], "readwrite");
 
     const objectStore = transaction.objectStore("chores_os");
-    
-    const deleteRequest = objectStore.delete(choreId);
 
+    const readRequest = objectStore.openCursor();
+
+    // delete from its parent
+    readRequest.addEventListener("success", (e) => {
+        const cursor = e.target.result;
+
+        if (cursor) {
+            const item = cursor.value;
+            if (item.children.includes(choreId)) {
+                const newChildren = [];
+                for (const child of item.children) {
+                    if (child !== choreId) {
+                        newChildren.push(child);
+                    }
+                }
+                item.children = newChildren;
+                const updateRequest = cursor.update(item);
+                updateRequest.addEventListener("success", (evt) => {
+                    console.log(`Remove ${choreId} from parent ${item.id}`);
+                })
+            }
+            cursor.continue();
+        } else {
+            // delete the target chore
+            const deleteRequest = objectStore.delete(choreId);
+            deleteRequest.addEventListener("success", (event) => {
+                console.log(`Chore ${choreId} deleted`);
+            });
+        }
+    })
+
+    
     transaction.addEventListener("complete", () => {
         // event.target.parentNode.parentNode.removeChild(event.target.parentNode);
-        console.log(`Chore ${choreId} deleted.`);
+        console.log(`All delete and update is done`);
         readAndDisplayAllChores();
     });
 
     transaction.addEventListener("error", (error) => {
         console.error(error);
     })
-
 }
 
 function updateItem(event) {
@@ -317,7 +351,15 @@ function updateItem(event) {
 
     const cancelUpdateBtn = document.createElement("button");
     cancelUpdateBtn.textContent = "Cancel";
-    cancelUpdateBtn.addEventListener("click", cancelUpdate);
+    cancelUpdateBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        while (choreListItem.firstChild) {
+            choreListItem.removeChild(choreListItem.firstChild);
+        }
+        for (const child of deletedChildren) {
+            choreListItem.appendChild(child);
+        }
+    });
 
     formElem.appendChild(namePara);
     formElem.appendChild(descPara);
@@ -325,8 +367,11 @@ function updateItem(event) {
     formElem.appendChild(saveUpdateBtn);
     formElem.appendChild(cancelUpdateBtn);
 
+
+    const deletedChildren = []; // save deleted children for cancel update
     while (choreListItem.firstChild) {
-        choreListItem.removeChild(choreListItem.firstChild);
+        const child = choreListItem.removeChild(choreListItem.firstChild);
+        deletedChildren.push(child);
     }
 
     choreListItem.appendChild(formElem);
@@ -341,11 +386,9 @@ function saveUpdate(event) {
     const updateNameInput = document.querySelector("#newName");
     const updateDescInput = document.querySelector("#newDesc");
     const updateChildrenSelect = document.querySelector("#newChildren");
-    
 
     const choreKey = Number(form.parentNode.getAttribute("data-item-id"));
   
-
     // save to db
     const transaction = db.transaction(["chores_os"], "readwrite");
     const objectStore = transaction.objectStore("chores_os");
@@ -368,16 +411,10 @@ function saveUpdate(event) {
         requestUpdate.addEventListener("success", () => {
             console.log("Update successful");
             // reload all items
-            
-            // CAN BE IMPROVED: NO NEED TO LOAD ALL
             readAndDisplayAllChores();
         })
 
     })
-
-
-   
-
 }
 
 function cancelUpdate (event) {
@@ -475,3 +512,47 @@ function ordering(numNodes, adjacencyList) {
     }
     return ordering;
 }
+
+// const newUserBlock = document.querySelector("header form > p:first-child");
+// const buddyBlock = document.querySelector("header form > p:last-child");
+// const addNewUser = newUserBlock.querySelector("button");
+// const forgetBuddy = buddyBlock.querySelector("button");
+
+// const usernameInput = document.querySelector("#uname");
+
+// const h1 = document.querySelector("h1");
+
+
+// DISPLAY USERNAME
+
+// function greetingDisplay() {
+//     if (localStorage.getItem("username")) {
+//         // change template to display greeting
+//         const username  = localStorage.getItem("username");
+
+//         h1.textContent = `Welcome to your Chore Buddy, ${username}`;
+
+//         buddyBlock.style.display = "block";
+//         newUserBlock.style.display = "none";
+//     } else {
+//         h1.textContent = "Welcome to Chore Buddy";
+
+//         buddyBlock.style.display = "none";
+//         newUserBlock.style.display = "block";
+//     }
+// }
+
+// addNewUser.addEventListener("click", (event) => {
+//     event.preventDefault();
+//     localStorage.setItem("username", usernameInput.value);
+//     usernameInput.value = "";
+//     greetingDisplay();
+// })
+
+// forgetBuddy.addEventListener("click", (event) => {
+//     event.preventDefault();
+//     localStorage.removeItem("username");
+//     greetingDisplay();
+// })
+
+// greetingDisplay();
