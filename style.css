@@ -1,9 +1,44 @@
+/* BASELINE */
 * {
     box-sizing: border-box;
 }
 
+button {
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+}
 
+button + button {
+    margin-left: 2px;
+}
+body {
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+    display: grid;
+    grid-template-rows: min-content 1fr auto;
+}
+
+
+/* Header */
+
+/* nav */
+header nav ul {
+    list-style-type: none;
+    padding-left: 0;
+    display: flex;
+    margin-top: 0;
+}
+
+header nav ul > * {
+    padding: 1rem;
+    background-color: aqua;
+}
+
+
+/* Logo and heading */
 header div {
+    margin: 0 auto;
     width: 100px;
     height: 100px; 
 }
@@ -15,6 +50,162 @@ header img {
     border-radius: 50%;
 }
 
-select {
-    width: 100px;
+h1 {
+    text-align: center;
+}
+
+/* Main section: nav bar(sort/reload), list of chores, form */
+main {
+    display: grid;
+    grid-template-rows: min-content 1fr auto;
+}
+
+/* Nav for sort and reload */
+main nav {
+    display: flex;
+    justify-content: end;
+}
+
+/* Section for chores */
+
+/* Sort status */
+#sortStatus {
+    margin: 0;
+    font-weight: bold;
+}
+
+main section ul.choreList {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+#sortStatus.success {
+    color: green;
+}
+
+#sortStatus.error {
+    color: red;
+}
+
+/* List of chores */
+main section ul.choreList {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    column-gap: 10px;
+    row-gap: 1rem;
+}
+
+main section ul.choreList.sortView {
+    display: grid;
+    width: 300px;
+    margin: 1rem auto;
+    grid-template-columns: 1fr;
+    row-gap: 1rem;
+}
+
+
+/* Each chore item */
+main section ul.choreList > * {
+    border-radius: 10px;
+    border: 1px solid black;
+    padding-left: 1rem;
+}
+
+
+main section ul.choreList > li > div > *:not(:first-child) {
+    margin-left: 1rem;
+}
+
+
+main section ul.choreList > * {
+    display: grid;
+    grid-template-rows: 1fr auto;
+}
+
+/* Each chore item - edit view */
+main section ul.choreList > li form > div {
+    margin-right: 1rem;
+}
+
+main section ul.choreList > li form > :last-child {
+    margin-bottom: 0;
+    display: flex;
+    justify-content: end;
+}
+
+main section ul.choreList > li form {
+    display: grid;
+    grid-template-rows: 1fr auto;
+}
+
+main section ul.choreList > li form div p:nth-child(1),
+main section ul.choreList > li form div p:nth-child(2) {
+    display: flex;
+}
+
+main section ul.choreList > li form div p:nth-child(1) > *:last-child,
+main section ul.choreList > li form div p:nth-child(2) > *:last-child  {
+    margin-left: 3px;
+    flex: 1;
+}
+
+main section ul.choreList > li form select {
+    display: block;
+    width: 100%;
+}
+
+
+main section ul.choreList > li form select option {
+    padding: 5px;
+}
+
+
+/* Add form */
+
+#addChoreForm {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    margin-top: 1rem;
+    border-radius: 10px;
+    border: 1px dashed black;
+    padding: 5px;
+}
+
+#addChoreForm h2 {
+    text-align: center;
+}
+#addChoreForm label {
+    display: inline-block;
+    width: 25%;
+    text-align: end;
+}
+
+#addChoreForm input, #addChoreForm select, #addChoreForm textarea {
+    display: inline-block;
+    width: 65%;
+}
+
+#addChoreForm input {
+    padding: 0.5rem;
+}
+
+#addChoreForm button {
+    display: block;
+    margin: 0 auto;
+}
+
+#addChoreForm select option {
+    padding: 10px;
+}
+/* Footer */
+footer a::before {
+    display: inline-block;
+    content: "";
+    width: 1rem;
+    height: 1rem;
+    /* border: 1px solid black; */
+    background-image: url(github-logo.svg);
+    background-repeat: no-repeat;
+    background-size: contain;
 }

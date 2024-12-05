@@ -6,13 +6,14 @@ const addChoreBtn = document.querySelector("#addChore");
 const choresList = document.querySelector("main section ul");
 const sortChoresBtn = document.querySelector("#sortChores");
 const refreshBtn = document.querySelector("#refresh");
-const sortErrorPara = document.querySelector("#sortError");
+const sortStatusPara = document.querySelector("#sortStatus")
 
 let db;
 
 // items can be deleted, index can change
 let allChores = [];
-let choreIndexMap = {};
+let allChoresIndexMap = {};
+let cyclicPair = [];
 
 // open database chores
 const openRequest = window.indexedDB.open("chores_db", 1);
@@ -52,34 +53,64 @@ openRequest.addEventListener("error", (event) => {
 
 sortChoresBtn.addEventListener("click", (event) => {
     event.preventDefault();
+    sortStatus.textContent = "";
 
     const sortedChores = sortItems();
+
     if (sortedChores.length != allChores.length) {
         // cycle detected
         displaySortError();
-        return;
+    } else {
+        displaySortSuccess();
+        displayData(sortedChores, true);
     }
 
-    displayData(sortedChores);
 })
+
+function displaySortSuccess() {
+    sortStatusPara.textContent = "Yay! All your chores are sorted and ready to go!";
+    sortStatusPara.setAttribute("class", "success");
+}
 
 function displaySortError() {
     while (choresList.firstChild) {
         choresList.removeChild(choresList.firstChild);
     }
-
-    sortErrorPara.textContent = "Please check your chores again. Cycle detected.";
-
+    const firstChoreName = allChores[cyclicPair[0]].name;
+    const secondChoreName = allChores[cyclicPair[1]].name;
+    sortStatusPara.textContent = `Whoops! A loop is found between chore "${firstChoreName}" and "${secondChoreName}". Please double-check your chores and try again!`;
+    sortStatusPara.setAttribute("class", "error");
 }
 
 refreshBtn.addEventListener("click", (event) => {
     event.preventDefault();
-    sortErrorPara.textContent = "";
+    sortStatus.textContent = "";
     readAndDisplayAllChores();
 })
 
+function isDuplicateName(name) {
+    for (const chore of allChores) {
+        if (chore.name === name) {
+            return true;
+        }
+    }
+    return false;
+}
+
 addChoreBtn.addEventListener("click", (event) => {
+    choreNameInput.setCustomValidity("");
+
+    if (!choreNameInput.validity.valid) {
+        return;
+    }
+    const newName = choreNameInput.value.trim();
+    if (isDuplicateName(newName)) {
+        choreNameInput.setCustomValidity(`Please choose another name. Chore "${newName}" already exists.`);
+        return;
+    }
     event.preventDefault();
+
+ 
 
     const children = [];
     for (const option of choresChildrenSelect.children) {
@@ -89,7 +120,7 @@ addChoreBtn.addEventListener("click", (event) => {
     }
 
     const newChore = {
-        name: choreNameInput.value,
+        name: newName,
         desc: choreDescInput.value,
         children: children
     };
@@ -127,7 +158,7 @@ addChoreBtn.addEventListener("click", (event) => {
 
 function readAndDisplayAllChores() {
     allChores = [];
-    choreIndexMap = {};
+    allChoresIndexMap = {};
 
     // create a new transaction to read
     const transaction = db.transaction(["chores_os"], "readonly");
@@ -146,7 +177,7 @@ function readAndDisplayAllChores() {
         } else {
             console.log("done reading all chores. about to display");
             console.log(allChores);
-            choreIndexMap = createIndexMap(allChores);
+            allChoresIndexMap = createIndexMap(allChores);
             displayData(allChores);
             updateSelectOptions(); // in "Add Chore" form
         }
@@ -173,7 +204,8 @@ function updateSelectOptions() {
 }
 
 
-function displayData(chores) {
+function displayData(chores, sorted=false) {
+    // clear up chore list view
     while (choresList.firstChild) {
         choresList.removeChild(choresList.firstChild);
     }
@@ -183,6 +215,8 @@ function displayData(chores) {
         const li = document.createElement("li");
         li.setAttribute("data-item-id", chore.id);
 
+        // content wrapper
+        const div = document.createElement("div");
         const h3 = document.createElement("h3");
         h3.textContent = chore.name;
     
@@ -203,7 +237,9 @@ function displayData(chores) {
 
             childrenListWrapper.appendChild(childLi);
         }
-        
+
+
+        const nav = document.createElement("nav");
         const editBtn = document.createElement("button");
         editBtn.type = "submit";
         editBtn.textContent = "Edit";
@@ -214,16 +250,27 @@ function displayData(chores) {
         deleteBtn.textContent = "Delete";
         deleteBtn.addEventListener("click", deleteItem);
     
-        li.appendChild(h3);
-        li.appendChild(para);
+        nav.appendChild(editBtn);
+        nav.appendChild(deleteBtn);
+
+
+        div.appendChild(h3);
+        div.appendChild(para);
         if (chore.children.length > 0) {
-            li.appendChild(childrenPara);
-            li.appendChild(childrenListWrapper);
+            div.appendChild(childrenPara);
+            div.appendChild(childrenListWrapper);
         }
-        li.appendChild(editBtn);
-        li.appendChild(deleteBtn);
+
+        li.appendChild(div);
+        li.appendChild(nav);
     
         choresList.appendChild(li);
+    }
+
+    if (sorted) {
+        choresList.classList.add("sortView");
+    } else {
+        choresList.classList.remove("sortView");
     }
 
 }
@@ -231,7 +278,7 @@ function displayData(chores) {
 
 function deleteItem(event) {
     // delete from the db
-    const choreId = Number(event.target.parentNode.getAttribute("data-item-id"));
+    const choreId = Number(event.target.parentNode.parentNode.getAttribute("data-item-id"));
 
     // create transaction to update parents
     const transaction = db.transaction(["chores_os"], "readwrite");
@@ -286,32 +333,36 @@ function updateItem(event) {
     const target = event.target;
 
     // parent node = list item
-    const choreListItem = target.parentNode;
+    const choreListItem = target.parentNode.parentNode;
     const choreKey = Number(choreListItem.getAttribute("data-item-id"));
 
     // get this item from index map
-    const targetChore = allChores[choreIndexMap[choreKey]];
+    const targetChore = allChores[allChoresIndexMap[choreKey]];
 
 
     // change the item to form
     const formElem = document.createElement("form");
 
+    const div  = document.createElement("div");
+
     // name
     const namePara = document.createElement("p");
     const nameLabel = document.createElement("label");
-    nameLabel.textContent = "Name:";
+    nameLabel.textContent = "Name";
     const nameInput = document.createElement("input");
     nameInput.id = "newName";
     nameInput.value = targetChore.name;
+    nameInput.required = true;
     namePara.appendChild(nameLabel);
     namePara.appendChild(nameInput);
 
     // description
     const descPara = document.createElement("p");
     const descLabel = document.createElement("label");
-    descLabel.textContent = "Notes:";
-    const descInput = document.createElement("input");
+    descLabel.textContent = "Notes";
+    const descInput = document.createElement("textarea");
     descInput.id = "newDesc";
+    descInput.rows = "3";
     descInput.value = targetChore.desc;
     descPara.appendChild(descLabel);
     descPara.appendChild(descInput);
@@ -319,7 +370,7 @@ function updateItem(event) {
     // children
     const childrenPara = document.createElement("p");
     const childrenLabel = document.createElement("label");
-    childrenLabel.textContent = "Must complete before:";
+    childrenLabel.textContent = "Must complete before";
 
     const selectWrapper = document.createElement("select");
     selectWrapper.multiple = true;
@@ -341,8 +392,14 @@ function updateItem(event) {
     childrenPara.appendChild(childrenLabel);
     childrenPara.appendChild(selectWrapper);
 
-    // save and cancel button
 
+    div.appendChild(namePara);
+    div.appendChild(descPara);
+    div.appendChild(childrenPara);
+
+
+    // save and cancel button
+    const buttonPara = document.createElement("p");
 
     const saveUpdateBtn = document.createElement("button");
     saveUpdateBtn.textContent = "Save changes";
@@ -350,6 +407,7 @@ function updateItem(event) {
 
     const cancelUpdateBtn = document.createElement("button");
     cancelUpdateBtn.textContent = "Cancel";
+
     cancelUpdateBtn.addEventListener("click", (e) => {
         e.preventDefault();
         while (choreListItem.firstChild) {
@@ -360,11 +418,11 @@ function updateItem(event) {
         }
     });
 
-    formElem.appendChild(namePara);
-    formElem.appendChild(descPara);
-    formElem.appendChild(childrenPara);
-    formElem.appendChild(saveUpdateBtn);
-    formElem.appendChild(cancelUpdateBtn);
+    buttonPara.appendChild(saveUpdateBtn);
+    buttonPara.appendChild(cancelUpdateBtn);
+
+    formElem.appendChild(div);
+    formElem.appendChild(buttonPara);
 
 
     const deletedChildren = []; // save deleted children for cancel update
@@ -378,15 +436,30 @@ function updateItem(event) {
 }
 
 function saveUpdate(event) {
-    event.preventDefault();
     const target = event.target; // button
-    const form = target.parentNode;
+    const form = target.parentNode.parentNode;
 
     const updateNameInput = document.querySelector("#newName");
     const updateDescInput = document.querySelector("#newDesc");
     const updateChildrenSelect = document.querySelector("#newChildren");
-
     const choreKey = Number(form.parentNode.getAttribute("data-item-id"));
+
+    updateNameInput.setCustomValidity("");
+
+    if (!updateNameInput.validity.valid) {
+        return;
+    }
+    const newName = updateNameInput.value.trim();
+
+    for (const chore of allChores) {
+        if (chore.id !== choreKey && newName === chore.name) {
+            updateNameInput.setCustomValidity(`Please choose another name. Chore "${newName}" already exists.`);
+            return;
+        }
+    }
+    event.preventDefault();
+
+   
   
     // save to db
     const transaction = db.transaction(["chores_os"], "readwrite");
@@ -396,7 +469,7 @@ function saveUpdate(event) {
 
     readRequest.addEventListener("success", (e) => {
         const item = e.target.result;
-        item.name = updateNameInput.value;
+        item.name = newName;
         item.desc = updateDescInput.value;
         const newChildren = [];
         for (const option of updateChildrenSelect.children) {
@@ -426,6 +499,7 @@ function createIndexMap(chores) {
 }
 
 function sortItems() {
+    cyclicPair = [];
     // map item keys to index
     // create adjacency list
     const indexMap = createIndexMap(allChores);
@@ -461,6 +535,7 @@ function dfs(node, adjacencyList, status, ordering) {
     // explore its children
     for (const child of adjacencyList[node]) {
         if (status[child] === -1) {
+            cyclicPair = [node, child];
             return false;
         }
         if (status[child] === 0) {

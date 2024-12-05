@@ -20,15 +20,18 @@
                 <img src="icon.jpeg">
             </div>
             <h1>Welcome to your Chore Buddy</h1>
-            <p>Buddy introduces himself blah blah</p>
+            <p>Welcome to <strong>Chore Buddy</strong>—your cheerful sidekick in tackling the wild world of chores! With Chore Buddy, adding your to-do tasks is a piece of cake. Plus, you can choose those sneaky little <em>"child"</em> chores that can only pop up once their big sibling is complete. Let Chore Buddy help you organize all your chores in the perfect order, making your adventures feel like a breeze!</p>
         </header>
         <main>
-            <button type="submit" id="sortChores">Sort chores</button>
-            <button type="submit" id="refresh">Refresh</button>
+            <nav>            
+                <button type="submit" id="sortChores">Sort chores</button>
+                <button type="submit" id="refresh">Refresh</button>
+            </nav>
+
             <section>
                 <h2>Your chores</h2>
-                <p id="sortError"></p>
-                <ul>
+                <p id="sortStatus"></p>
+                <ul class="choreList">
                 </ul>
 
             </section>
@@ -37,14 +40,14 @@
 
                 <p>
                     <label for="choreName">Name</label>
-                    <input type="text" id="choreName" name="choreName">
+                    <input type="text" id="choreName" name="choreName" required>
                 </p>
                 <p>
                     <label for="choreDesc">Notes</label>
-                    <input type="text" id="choreDesc" name="choreDesc"></input>
+                    <textarea type="text" id="choreDesc" name="choreDesc" rows="3"></textarea>
                 </p>
                 <p>
-                    <label for="choresChildrenSelect">Must complete before:</label>
+                    <label for="choresChildrenSelect">Must complete before</label>
                     <select multiple id="choresChildrenSelect" name="choreChildren">
                     </select>
                 </p>
@@ -53,6 +56,8 @@
                 </p>
             </form>
         </main>
-        <footer></footer>
+        <footer>
+            <p><a href="https://github.com/anh-hn-nguyen/chore-buddy.git">Source code</a>. Feel free to contribute.</p>
+        </footer>
     </body>
 </html>
