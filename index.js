@@ -5,7 +5,7 @@ const addChoreBtn = document.querySelector("#addChore");
 
 const choresList = document.querySelector("main section ul");
 const sortChoresBtn = document.querySelector("#sortChores");
-const reloadBtn = document.querySelector("#reload");
+const refreshBtn = document.querySelector("#refresh");
 const sortErrorPara = document.querySelector("#sortError");
 
 let db;
@@ -72,7 +72,7 @@ function displaySortError() {
 
 }
 
-reloadBtn.addEventListener("click", (event) => {
+refreshBtn.addEventListener("click", (event) => {
     event.preventDefault();
     sortErrorPara.textContent = "";
     readAndDisplayAllChores();
@@ -191,7 +191,7 @@ function displayData(chores) {
     
         // display children
         const childrenPara = document.createElement("p");
-        childrenPara.textContent = "Must be completed before:";
+        childrenPara.textContent = "Must complete before:";
     
         const childrenListWrapper = document.createElement("ul");
         for (const childKey of chore.children) {
@@ -319,7 +319,7 @@ function updateItem(event) {
     // children
     const childrenPara = document.createElement("p");
     const childrenLabel = document.createElement("label");
-    childrenLabel.textContent = "Must be done before:";
+    childrenLabel.textContent = "Must complete before:";
 
     const selectWrapper = document.createElement("select");
     selectWrapper.multiple = true;
