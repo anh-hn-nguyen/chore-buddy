@@ -3,9 +3,16 @@
     box-sizing: border-box;
 }
 
+html {
+    font-family: "Atma", system-ui;
+    letter-spacing: 1px;
+}
+
 button {
     padding: 0.5rem 1rem;
     border-radius: 10px;
+    font-family: inherit;
+    font-size: 1rem;
 }
 
 button + button {
@@ -32,7 +39,6 @@ header nav ul {
 
 header nav ul > * {
     padding: 1rem;
-    background-color: aqua;
 }
 
 
@@ -51,7 +57,14 @@ header img {
 }
 
 h1 {
+    font-family: "Henny Penny", system-ui;
     text-align: center;
+    font-size: 3rem;
+}
+header p {
+    letter-spacing: 1px;
+    line-height: 2rem;
+    font-size: 1.2rem;
 }
 
 /* Main section: nav bar(sort/reload), list of chores, form */
@@ -159,6 +172,14 @@ main section ul.choreList > li form select option {
     padding: 5px;
 }
 
+main section ul.choreList > li form input,
+main section ul.choreList > li form textarea,
+main section ul.choreList > li form select {
+    font-family: inherit;
+    letter-spacing: inherit;
+    font-size: 0.9rem;
+}
+
 
 /* Add form */
 
@@ -184,6 +205,9 @@ main section ul.choreList > li form select option {
 #addChoreForm input, #addChoreForm select, #addChoreForm textarea {
     display: inline-block;
     width: 65%;
+    font-family: inherit;
+    letter-spacing: inherit;
+    font-size: 0.9rem;
 }
 
 #addChoreForm input {
@@ -196,7 +220,7 @@ main section ul.choreList > li form select option {
 }
 
 #addChoreForm select option {
-    padding: 10px;
+    padding: 5px;
 }
 /* Footer */
 footer a::before {

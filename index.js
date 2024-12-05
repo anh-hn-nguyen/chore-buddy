@@ -68,7 +68,7 @@ sortChoresBtn.addEventListener("click", (event) => {
 })
 
 function displaySortSuccess() {
-    sortStatusPara.textContent = "Yay! All your chores are sorted and ready to go!";
+    sortStatusPara.textContent = "Yay! All your chores are sorted!";
     sortStatusPara.setAttribute("class", "success");
 }
 
