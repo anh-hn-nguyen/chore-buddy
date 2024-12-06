@@ -190,6 +190,7 @@ main section ul.choreList > li form select {
     max-width: 400px;
     margin: 0 auto;
     margin-top: 1rem;
+    margin-bottom: 1rem;
     border-radius: 10px;
     border: 1px dashed black;
     padding: 5px;
@@ -236,7 +237,6 @@ main section ul.choreList > li form select {
 footer {
     display: flex;
     justify-content: space-between;
-    margin-top: 1rem;
 }
 
 footer p::before {
