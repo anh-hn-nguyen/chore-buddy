@@ -26,7 +26,9 @@ body {
     grid-template-rows: min-content 1fr auto;
 }
 
-
+body {
+    background-color: #fed250;
+}
 /* Header */
 
 /* nav */
@@ -46,7 +48,7 @@ header nav ul > * {
 header div {
     margin: 0 auto;
     width: 100px;
-    height: 100px; 
+    height: 100px;
 }
 
 header img {
@@ -222,13 +224,27 @@ main section ul.choreList > li form select {
 #addChoreForm select option {
     padding: 5px;
 }
+
+#addChoreForm small {
+    display: block;
+    color: #666;
+    margin-top: 5px;
+    margin-left: 2rem;
+}
+
 /* Footer */
-footer a::before {
+footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+}
+
+footer p::before {
     display: inline-block;
     content: "";
     width: 1rem;
     height: 1rem;
-    /* border: 1px solid black; */
+    margin-right: 5px;
     background-image: url(github-logo.svg);
     background-repeat: no-repeat;
     background-size: contain;

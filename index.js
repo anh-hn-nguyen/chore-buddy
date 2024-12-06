@@ -61,11 +61,21 @@ sortChoresBtn.addEventListener("click", (event) => {
         // cycle detected
         displaySortError();
     } else {
-        displaySortSuccess();
-        displayData(sortedChores, true);
+        if (allChores.length === 0) {
+            displayAlertEmptyChoreList();
+        } else {
+            displaySortSuccess();
+            displayData(sortedChores, true);
+        }
+
     }
 
 })
+
+function displayAlertEmptyChoreList() {
+    sortStatusPara.textContent = "Oh! It looks like your chore list is empty!";
+    sortStatusPara.setAttribute("class", "success");
+}
 
 function displaySortSuccess() {
     sortStatusPara.textContent = "Yay! All your chores are sorted!";
