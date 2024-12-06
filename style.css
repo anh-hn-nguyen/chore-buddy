@@ -8,16 +8,42 @@ html {
     letter-spacing: 1px;
 }
 
+a {
+    color: inherit;
+}
+
 button {
     padding: 0.5rem 1rem;
     border-radius: 10px;
     font-family: inherit;
     font-size: 1rem;
+    box-shadow:
+        1px 1px 1px black,
+        inset 2px 3px 5px rgb(0 0 0 / 30%),
+        inset -2px -3px 5px rgb(255 255 255 / 50%);
+}
+
+button:focus,
+button:hover {
+  background-image: linear-gradient(to bottom right, #888, #eee);
+}
+
+button:hover {
+    cursor: pointer;
 }
 
 button + button {
     margin-left: 2px;
 }
+
+button:active {
+    box-shadow:
+        inset 2px 2px 1px black,
+        inset 2px 3px 5px rgb(0 0 0 / 30%),
+        inset -2px -3px 5px rgb(255 255 255 / 50%);
+}
+
+
 body {
     max-width: 1000px;
     width: 100%;
@@ -41,6 +67,11 @@ header nav ul {
 
 header nav ul > * {
     padding: 1rem;
+}
+
+header nav ul > *:hover {
+    background-color: #f78888;
+    color: white;
 }
 
 
