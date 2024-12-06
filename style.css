@@ -276,7 +276,11 @@ footer p::before {
     width: 1rem;
     height: 1rem;
     margin-right: 5px;
-    background-image: url(github-logo.svg);
+    background-image: url(images/github-logo.svg);
     background-repeat: no-repeat;
     background-size: contain;
+}
+
+footer a:hover {
+    color: #f78888;
 }
