@@ -280,6 +280,7 @@ function displayData(chores, sorted=false) {
     if (sorted) {
         choresList.classList.add("sortView");
     } else {
+        sortStatusPara.textContent = "";
         choresList.classList.remove("sortView");
     }
 
