@@ -115,7 +115,7 @@ main nav {
 /* Section for chores */
 
 /* Sort status */
-#sortStatus {
+#choreListStatus {
     margin: 0;
     font-weight: bold;
 }
@@ -125,11 +125,11 @@ main section ul.choreList {
     padding-left: 0;
 }
 
-#sortStatus.success {
+#choreListStatus.success {
     color: green;
 }
 
-#sortStatus.error {
+#choreListStatus.error {
     color: red;
 }
 

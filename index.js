@@ -6,7 +6,7 @@ const addChoreBtn = document.querySelector("#addChore");
 const choresList = document.querySelector("main section ul");
 const sortChoresBtn = document.querySelector("#sortChores");
 const refreshBtn = document.querySelector("#refresh");
-const choresListStatusPara = document.querySelector("#listStatus")
+const choresListStatusPara = document.querySelector("#choreListStatus")
 
 let db;
 
@@ -53,7 +53,7 @@ openRequest.addEventListener("error", (event) => {
 
 sortChoresBtn.addEventListener("click", (event) => {
     event.preventDefault();
-    sortStatus.textContent = "";
+    choresListStatusPara.textContent = "";
 
     const sortedChores = sortItems();
 
@@ -78,7 +78,7 @@ function displaySortError() {
 
 refreshBtn.addEventListener("click", (event) => {
     event.preventDefault();
-    sortStatus.textContent = "";
+    choresListStatusPara.textContent = "";
     readAndDisplayAllChores();
 })
 
@@ -220,8 +220,10 @@ function displayData(chores, sorted=false) {
     }
     if (sorted) {
         displaySortSuccess(chores);
+        choresList.classList.add("sortView");
     } else {
         displayNonSortSuccess(chores);
+        choresList.classList.remove("sortView");
     }
 
     const indexMap = createIndexMap(chores); // map key of each object (chore) to its current index in the list, so later an parent object can be retrieved by the key
