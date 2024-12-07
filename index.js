@@ -6,7 +6,7 @@ const addChoreBtn = document.querySelector("#addChore");
 const choresList = document.querySelector("main section ul");
 const sortChoresBtn = document.querySelector("#sortChores");
 const refreshBtn = document.querySelector("#refresh");
-const sortStatusPara = document.querySelector("#sortStatus")
+const choresListStatusPara = document.querySelector("#listStatus")
 
 let db;
 
@@ -61,26 +61,10 @@ sortChoresBtn.addEventListener("click", (event) => {
         // cycle detected
         displaySortError();
     } else {
-        if (allChores.length === 0) {
-            displayAlertEmptyChoreList();
-        } else {
-            displaySortSuccess();
-            displayData(sortedChores, true);
-        }
-
+        displayData(sortedChores, true);
     }
 
 })
-
-function displayAlertEmptyChoreList() {
-    sortStatusPara.textContent = "Oh! It looks like your chore list is empty!";
-    sortStatusPara.setAttribute("class", "success");
-}
-
-function displaySortSuccess() {
-    sortStatusPara.textContent = "Yay! All your chores are sorted!";
-    sortStatusPara.setAttribute("class", "success");
-}
 
 function displaySortError() {
     while (choresList.firstChild) {
@@ -88,8 +72,8 @@ function displaySortError() {
     }
     const firstChoreName = allChores[cyclicPair[0]].name;
     const secondChoreName = allChores[cyclicPair[1]].name;
-    sortStatusPara.textContent = `Whoops! A loop is found between chore "${firstChoreName}" and "${secondChoreName}". Please double-check your chores and try again!`;
-    sortStatusPara.setAttribute("class", "error");
+    choresListStatusPara.textContent = `Whoops! A loop is found between chore "${firstChoreName}" and "${secondChoreName}". Please double-check your chores and try again!`;
+    choresListStatusPara.setAttribute("class", "error");
 }
 
 refreshBtn.addEventListener("click", (event) => {
@@ -135,7 +119,6 @@ addChoreBtn.addEventListener("click", (event) => {
         children: children
     };
 
-    console.log(newChore);
 
     // add to the index db
     // start a new transaction with the db to add
@@ -213,12 +196,34 @@ function updateSelectOptions() {
     choresChildrenSelect.size = Math.max(1, Math.min(3, allChores.length));
 }
 
+function displaySortSuccess(chores) {
+    if (chores.length === 0) {
+        choresListStatusPara.textContent = "Oh! It looks like your chore list is empty!";
+    } else {
+        choresListStatusPara.textContent = "Yay! All your chores are sorted!";
+    }
+    choresListStatusPara.setAttribute("class", "success");
+}
+
+function displayNonSortSuccess(chores) {
+    choresListStatusPara.textContent = "";
+    if (chores.length === 0) {
+        choresListStatusPara.textContent = "Your chore list is empty! Ready to add some new tasks?";
+    }
+    choresListStatusPara.setAttribute("class", "success");
+}
 
 function displayData(chores, sorted=false) {
     // clear up chore list view
     while (choresList.firstChild) {
         choresList.removeChild(choresList.firstChild);
     }
+    if (sorted) {
+        displaySortSuccess(chores);
+    } else {
+        displayNonSortSuccess(chores);
+    }
+
     const indexMap = createIndexMap(chores); // map key of each object (chore) to its current index in the list, so later an parent object can be retrieved by the key
     
     for (const chore of chores) {
@@ -275,13 +280,6 @@ function displayData(chores, sorted=false) {
         li.appendChild(nav);
     
         choresList.appendChild(li);
-    }
-
-    if (sorted) {
-        choresList.classList.add("sortView");
-    } else {
-        sortStatusPara.textContent = "";
-        choresList.classList.remove("sortView");
     }
 
 }
