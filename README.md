@@ -19,7 +19,6 @@ List of chores. Each chore includes:
 - Otherwise, an error indicating which pair of chores contain the loop (the back edge)
 
 
-### Output
 ## Sample
 1. First time accessing the app:
 
