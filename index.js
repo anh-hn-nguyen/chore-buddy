@@ -11,8 +11,6 @@ const choresListStatusPara = document.querySelector("#choreListStatus")
 let db;
 
 // items can be deleted, index can change
-let allChores = [];
-let allChoresIndexMap = {};
 let cyclicPair = [];
 
 // open database chores
@@ -24,15 +22,23 @@ openRequest.addEventListener("upgradeneeded", (event) => {
     db = event.target.result;
 
     // create object store
-    const objectStore = db.createObjectStore("chores_os", {
+    const choresObjectStore = db.createObjectStore("chores_os", {
         keyPath: "id",
         autoIncrement: true, // the value is genereated and stored in prop keyPath => used to identify the object
     })
 
     // define schema of the object store
-    objectStore.createIndex("name", "name", { unique: true });
-    objectStore.createIndex("desc", "desc", { unique: false });
-    objectStore.createIndex("children", "children", { unique: false })
+    choresObjectStore.createIndex("name", "name", { unique: true });
+    choresObjectStore.createIndex("desc", "desc", { unique: false });
+    
+    // create relationship object store
+    const connsObjectStore = db.createObjectStore("connections_os", {
+        keyPath: ["parent", "child"],
+    })
+
+    // define schema for relation object store
+    connsObjectStore.createIndex("parent", "parent", { unique: false });
+    connsObjectStore.createIndex("child", "child", { unique: false });
 
     console.log("Database setup complete");
 })
@@ -55,23 +61,79 @@ sortChoresBtn.addEventListener("click", (event) => {
     event.preventDefault();
     choresListStatusPara.textContent = "";
 
-    const sortedChores = sortItems();
+    // read chores and connections
+    const chores = {};
+    const conns = {};
 
-    if (sortedChores.length != allChores.length) {
-        // cycle detected
-        displaySortError();
-    } else {
-        displayData(sortedChores, true);
-    }
+    // create a new transaction to read
+    const transaction = db.transaction(["chores_os", "connections_os"], "readonly");
+
+    const choresObjectStore = transaction.objectStore("chores_os");
+
+    // start a request to read chores
+    const choresReadRequest = choresObjectStore.openCursor();
+
+    choresReadRequest.addEventListener("success", (event) => {
+        const cursor = event.target.result;
+
+        if (cursor) {
+            const chore = cursor.value;
+            chores[chore.id] = chore;
+            cursor.continue();
+        }
+
+    })
+
+    // start a read request to read connections
+    const connsObjectStore = transaction.objectStore("connections_os");
+    const connsReadRequest = connsObjectStore.openCursor();
+    connsReadRequest.addEventListener("success", (event) => {
+        const cursor = event.target.result;
+
+        if (cursor) {
+            const conn = cursor.value;
+            const parent = conn.parent;
+            const child = conn.child;
+
+            if (!Object.hasOwn(conns, parent)) {
+                conns[parent] = [];
+            }
+            conns[parent].push(child);
+            cursor.continue();
+        }
+    })
+
+    transaction.addEventListener("complete", (event) => {
+        for (const choreId in chores) {
+            if (!Object.hasOwn(conns, choreId)) {
+                conns[choreId] = [];
+            }
+        }
+
+        if (Object.keys(chores).length === 0) {
+            displaySortSuccess(chores);
+            return;
+        }
+
+        const order = ordering(chores, conns); // return ordering of chore keys
+
+        if (order.length !== Object.keys(chores).length) {
+            // cycle detected
+            displaySortError(chores);          
+        } else {
+            displayData(chores, conns, order);
+        }
+
+    })
 
 })
 
-function displaySortError() {
+function displaySortError(chores) {
     while (choresList.firstChild) {
         choresList.removeChild(choresList.firstChild);
     }
-    const firstChoreName = allChores[cyclicPair[0]].name;
-    const secondChoreName = allChores[cyclicPair[1]].name;
+    const firstChoreName = chores[cyclicPair[0]].name;
+    const secondChoreName = chores[cyclicPair[1]].name;
     choresListStatusPara.textContent = `Whoops! A loop is found between chore "${firstChoreName}" and "${secondChoreName}". Please double-check your chores and try again!`;
     choresListStatusPara.setAttribute("class", "error");
 }
@@ -82,14 +144,6 @@ refreshBtn.addEventListener("click", (event) => {
     readAndDisplayAllChores();
 })
 
-function isDuplicateName(name) {
-    for (const chore of allChores) {
-        if (chore.name === name) {
-            return true;
-        }
-    }
-    return false;
-}
 
 addChoreBtn.addEventListener("click", (event) => {
     choreNameInput.setCustomValidity("");
@@ -98,15 +152,11 @@ addChoreBtn.addEventListener("click", (event) => {
         return;
     }
     const newName = choreNameInput.value.trim();
-    if (isDuplicateName(newName)) {
-        choreNameInput.setCustomValidity(`Please choose another name. Chore "${newName}" already exists.`);
-        return;
-    }
+
     event.preventDefault();
 
- 
-
     const children = [];
+
     for (const option of choresChildrenSelect.children) {
         if (option.selected) {
             children.push(Number(option.value));
@@ -116,19 +166,28 @@ addChoreBtn.addEventListener("click", (event) => {
     const newChore = {
         name: newName,
         desc: choreDescInput.value,
-        children: children
     };
 
 
     // add to the index db
     // start a new transaction with the db to add
-    const transaction = db.transaction(["chores_os"], "readwrite");
+    const transaction = db.transaction(["chores_os", "connections_os"], "readwrite");
 
-    const objectStore = transaction.objectStore("chores_os"); // get the object store of this transaction
+    const choresObjectStore = transaction.objectStore("chores_os"); // get the object store of this transaction
 
-    const addRequest = objectStore.add(newChore); // carry out transaction
+    const addRequest = choresObjectStore.add(newChore); // carry out transaction
 
     addRequest.addEventListener("success", (event) => {
+        const parentId = event.target.result;
+        
+        const connsObjectStore = transaction.objectStore("connections_os");
+        for (const childKey of children) {
+            connsObjectStore.add({
+                parent: parentId,
+                child: childKey
+            });
+        }
+
         // clear inputs
         choreNameInput.value = "";
         choreDescInput.value = "";
@@ -137,7 +196,6 @@ addChoreBtn.addEventListener("click", (event) => {
 
     // report transaction results
     transaction.addEventListener("complete", (event) => {
-        console.log(`Add chore ${newChore.name} completed`);
         readAndDisplayAllChores();
     });
 
@@ -150,54 +208,78 @@ addChoreBtn.addEventListener("click", (event) => {
 
 
 function readAndDisplayAllChores() {
-    allChores = [];
-    allChoresIndexMap = {};
+    const chores = {};
+    const conns = {};
 
     // create a new transaction to read
-    const transaction = db.transaction(["chores_os"], "readonly");
+    const transaction = db.transaction(["chores_os", "connections_os"], "readonly");
 
-    const objectStore = transaction.objectStore("chores_os");
 
-    // start a request to read
-    const readRequest = objectStore.openCursor();
+    const choresObjectStore = transaction.objectStore("chores_os");
 
-    readRequest.addEventListener("success", (event) => {
+    // start a request to read chores
+    const choresReadRequest = choresObjectStore.openCursor();
+
+    choresReadRequest.addEventListener("success", (event) => {
         const cursor = event.target.result;
 
         if (cursor) {
-            allChores.push(cursor.value);
+            const chore = cursor.value;
+            chores[chore.id] = chore;
             cursor.continue();
-        } else {
-            console.log("done reading all chores. about to display");
-            console.log(allChores);
-            allChoresIndexMap = createIndexMap(allChores);
-            displayData(allChores);
-            updateSelectOptions(); // in "Add Chore" form
         }
+    })
 
+    // start a read request to read connections
+    const connsObjectStore = transaction.objectStore("connections_os");
+    const connsReadRequest = connsObjectStore.openCursor();
+    connsReadRequest.addEventListener("success", (event) => {
+        const cursor = event.target.result;
+        
+        if (cursor) {
+            const conn = cursor.value;
+            const parent = conn.parent;
+            const child = conn.child;
+            if (!Object.hasOwn(conns, parent)) {
+                conns[parent] = [];
+            }
+            conns[parent].push(child);
+            cursor.continue();
+        }
+    })
+
+
+    transaction.addEventListener("complete", (event) => {
+        for (const choreId in chores) {
+            if (!Object.hasOwn(conns, choreId)) {
+                conns[choreId] = [];
+            }
+        }
+        displayData(chores, conns);
+        updateSelectOptions(chores); // in "Add Chore" form
     })
 
 }
 
-function updateSelectOptions() {
+function updateSelectOptions(chores) {
     while (choresChildrenSelect.firstChild) {
         choresChildrenSelect.removeChild(choresChildrenSelect.firstChild);
     }
 
-    for (const chore of allChores) {
+    for (const [choreId, chore] of Object.entries(chores)) {
         const option = document.createElement("option");
 
         option.textContent = chore.name;
-        option.value = chore.id;
+        option.value = choreId;
         option.name = choresChildrenSelect.name;
         choresChildrenSelect.appendChild(option);
     }
 
-    choresChildrenSelect.size = Math.max(1, Math.min(3, allChores.length));
+    choresChildrenSelect.size = Math.max(1, Math.min(3, Object.keys(chores).length));
 }
 
 function displaySortSuccess(chores) {
-    if (chores.length === 0) {
+    if (Object.keys(chores).length === 0) {
         choresListStatusPara.textContent = "Oh! It looks like your chore list is empty!";
     } else {
         choresListStatusPara.textContent = "Yay! All your chores are sorted!";
@@ -207,18 +289,21 @@ function displaySortSuccess(chores) {
 
 function displayNonSortSuccess(chores) {
     choresListStatusPara.textContent = "";
-    if (chores.length === 0) {
+    if (Object.keys(chores).length === 0) {
         choresListStatusPara.textContent = "Your chore list is empty! Ready to add some new tasks?";
     }
     choresListStatusPara.setAttribute("class", "success");
 }
 
-function displayData(chores, sorted=false) {
+function displayData(chores, conns, order = []) {
     // clear up chore list view
     while (choresList.firstChild) {
         choresList.removeChild(choresList.firstChild);
     }
-    if (sorted) {
+    const choreKeys = order.length === 0 ? Object.keys(chores) : order;
+
+    // sort mode
+    if (order.length > 0) {
         displaySortSuccess(chores);
         choresList.classList.add("sortView");
     } else {
@@ -226,11 +311,11 @@ function displayData(chores, sorted=false) {
         choresList.classList.remove("sortView");
     }
 
-    const indexMap = createIndexMap(chores); // map key of each object (chore) to its current index in the list, so later an parent object can be retrieved by the key
-    
-    for (const chore of chores) {
+
+    for (const choreId of choreKeys) {
+        const chore = chores[choreId];
         const li = document.createElement("li");
-        li.setAttribute("data-item-id", chore.id);
+        li.setAttribute("data-item-id", choreId);
 
         // content wrapper
         const div = document.createElement("div");
@@ -245,11 +330,11 @@ function displayData(chores, sorted=false) {
         childrenPara.textContent = "Must complete before:";
     
         const childrenListWrapper = document.createElement("ul");
-        for (const childKey of chore.children) {
+        const childrenKeys = conns[choreId];
+        for (const childKey of childrenKeys) {
             const childLi = document.createElement("li");
             childLi.setAttribute("data-item-id", childKey);
-
-            const child = chores[indexMap[childKey]];
+            const child = chores[childKey];
             childLi.textContent = child.name;
 
             childrenListWrapper.appendChild(childLi);
@@ -273,7 +358,7 @@ function displayData(chores, sorted=false) {
 
         div.appendChild(h3);
         div.appendChild(para);
-        if (chore.children.length > 0) {
+        if (childrenKeys.length > 0) {
             div.appendChild(childrenPara);
             div.appendChild(childrenListWrapper);
         }
@@ -289,53 +374,68 @@ function displayData(chores, sorted=false) {
 
 function deleteItem(event) {
     // delete from the db
-    const choreId = Number(event.target.parentNode.parentNode.getAttribute("data-item-id"));
+    const choreKey = Number(event.target.parentNode.parentNode.getAttribute("data-item-id"));
 
-    // create transaction to update parents
-    const transaction = db.transaction(["chores_os"], "readwrite");
+    let targetChoreChildren = [];
+    let targetChoreParents = [];
 
-    const objectStore = transaction.objectStore("chores_os");
+    // create transaction to read chore and its edges
+    const readTransaction = db.transaction(["chores_os", "connections_os"], "readonly");
 
-    const readRequest = objectStore.openCursor();
+    // read the chore children
+    const connsObjectStore = readTransaction.objectStore("connections_os");
+    const parentIndex = connsObjectStore.index("parent");
+    const childrenReadRequest = parentIndex.getAll(choreKey);
 
-    // delete this chore from its parents
-    readRequest.addEventListener("success", (e) => {
-        const cursor = e.target.result;
-
-        if (cursor) {
-            const item = cursor.value;
-            if (item.children.includes(choreId)) {
-                const newChildren = [];
-                for (const child of item.children) {
-                    if (child !== choreId) {
-                        newChildren.push(child);
-                    }
-                }
-                item.children = newChildren;
-                const updateRequest = cursor.update(item);
-                updateRequest.addEventListener("success", (evt) => {
-                    console.log(`Remove ${choreId} from parent ${item.id}`);
-                })
-            }
-            cursor.continue();
-        } else {
-            // delete the target chore
-            const deleteRequest = objectStore.delete(choreId);
-            deleteRequest.addEventListener("success", (event) => {
-                console.log(`Chore ${choreId} deleted`);
-            });
+    childrenReadRequest.addEventListener("success", (event) => {
+        const conns = event.target.result;
+        for (const conn of conns) {
+            targetChoreChildren.push(conn.child);
         }
     })
 
-    
-    transaction.addEventListener("complete", () => {
-        console.log(`All delete and update is done`);
-        readAndDisplayAllChores();
-    });
+    // read the chore parents
+    const childIndex = connsObjectStore.index("child");
+    const parentsReadRequest = childIndex.getAll(choreKey);
 
-    transaction.addEventListener("error", (error) => {
-        console.error(error);
+    parentsReadRequest.addEventListener("success", (event) => {
+        const conns = event.target.result;
+        for (const conn of conns) {
+            targetChoreParents.push(conn.parent);
+        }
     })
+
+
+    // delete transaction
+    readTransaction.addEventListener("complete", (event) => {
+        const deleteTransaction = db.transaction(["chores_os", "connections_os"], "readwrite");
+
+        // delete chore
+        const choresObjectStore = deleteTransaction.objectStore("chores_os");
+        choresObjectStore.delete(choreKey);
+
+        const connsObjectStore = deleteTransaction.objectStore("connections_os");
+        // delete chore children
+        for (const childKey of targetChoreChildren) {
+            connsObjectStore.delete([choreKey, childKey]);
+        }
+
+        // delete chore parents
+        for (const parentKey of targetChoreParents) {
+            connsObjectStore.delete([parentKey, choreKey]);
+        }
+
+        deleteTransaction.addEventListener("complete", () => {
+            readAndDisplayAllChores();
+        });
+    
+        deleteTransaction.addEventListener("error", (error) => {
+            console.error(error);
+        })
+
+    })
+
+
 }
 
 function updateItem(event) {
@@ -345,212 +445,228 @@ function updateItem(event) {
 
     // parent node = list item
     const choreListItem = target.parentNode.parentNode;
-    const choreKey = Number(choreListItem.getAttribute("data-item-id"));
-
+    const targetChoreId = Number(choreListItem.getAttribute("data-item-id"));
+    
     // get this item from index map
-    const targetChore = allChores[allChoresIndexMap[choreKey]];
 
+    // read this chore and its connections from db
+    let targetChore = null;
+    let targetChoreChildren = [];
+    const chores = {};
 
-    // change the item to form
-    const formElem = document.createElement("form");
+    const transaction = db.transaction(["chores_os", "connections_os"], "readonly");
+    const choresObjectStore = transaction.objectStore("chores_os");
 
-    const div  = document.createElement("div");
+    // start a request to read chores
+    const choresReadRequest = choresObjectStore.openCursor();
 
-    // name
-    const namePara = document.createElement("p");
-    const nameLabel = document.createElement("label");
-    nameLabel.textContent = "Name";
-    const nameInput = document.createElement("input");
-    nameInput.id = "newName";
-    nameInput.value = targetChore.name;
-    nameInput.required = true;
-    namePara.appendChild(nameLabel);
-    namePara.appendChild(nameInput);
+    choresReadRequest.addEventListener("success", (event) => {
+        const cursor = event.target.result;
 
-    // description
-    const descPara = document.createElement("p");
-    const descLabel = document.createElement("label");
-    descLabel.textContent = "Notes";
-    const descInput = document.createElement("textarea");
-    descInput.id = "newDesc";
-    descInput.rows = "3";
-    descInput.value = targetChore.desc;
-    descPara.appendChild(descLabel);
-    descPara.appendChild(descInput);
-
-    // children
-    const childrenPara = document.createElement("p");
-    const childrenLabel = document.createElement("label");
-    childrenLabel.textContent = "Must complete before";
-
-    const selectWrapper = document.createElement("select");
-    selectWrapper.multiple = true;
-    selectWrapper.id = "newChildren";
-
-    for (const chore of allChores) {
-        if (chore.id != choreKey) {
-            const option = document.createElement("option");
-
-            option.textContent = chore.name;
-            option.value = chore.id;
-            option.name = choresChildrenSelect.name;
-            option.selected = targetChore.children.includes(chore.id);
-            selectWrapper.appendChild(option);
+        if (cursor) {
+            const chore = cursor.value;
+            chores[chore.id] = chore;
+            cursor.continue();
         }
-    }
-    selectWrapper.size = Math.min(3, allChores.length - 1);
 
-    childrenPara.appendChild(childrenLabel);
-    childrenPara.appendChild(selectWrapper);
+    })
+
+    // read the chore
+    const choreReadRequest = choresObjectStore.get(targetChoreId);
+    choreReadRequest.addEventListener("success", (event) => {
+        targetChore = event.target.result;
+    })
+
+    // read the chore children
+    const connsObjectStore = transaction.objectStore("connections_os");
+    const index = connsObjectStore.index("parent");
+    const childrenReadRequest = index.getAll(targetChoreId);
+
+    childrenReadRequest.addEventListener("success", (event) => {
+        const conns = event.target.result;
+        for (const conn of conns) {
+            targetChoreChildren.push(conn.child);
+        }
+        
+    })
+
+    // display update form
+    transaction.addEventListener("complete", (event) => {
+        // change the item to form
+        const formElem = document.createElement("form");
+
+        const div  = document.createElement("div");
+
+        // name
+        const namePara = document.createElement("p");
+        const nameLabel = document.createElement("label");
+        nameLabel.textContent = "Name";
+        const nameInput = document.createElement("input");
+        nameInput.id = "newName";
+        nameInput.value = targetChore.name;
+        nameInput.required = true;
+        namePara.appendChild(nameLabel);
+        namePara.appendChild(nameInput);
+
+        // description
+        const descPara = document.createElement("p");
+        const descLabel = document.createElement("label");
+        descLabel.textContent = "Notes";
+        const descInput = document.createElement("textarea");
+        descInput.id = "newDesc";
+        descInput.rows = "3";
+        descInput.value = targetChore.desc;
+        descPara.appendChild(descLabel);
+        descPara.appendChild(descInput);
+
+        // children
+        const childrenPara = document.createElement("p");
+        const childrenLabel = document.createElement("label");
+        childrenLabel.textContent = "Must complete before";
+
+        const selectWrapper = document.createElement("select");
+        selectWrapper.multiple = true;
+        selectWrapper.id = "newChildren";
+
+        for (const [choreKey, chore] of Object.entries(chores)) {
+            const choreId = Number(choreKey);
+            if (choreId !== targetChoreId) {
+                const option = document.createElement("option");
+
+                option.textContent = chore.name;
+                option.value = choreId;
+                option.name = chore.name;
+                option.selected = targetChoreChildren.includes(choreId);
+                selectWrapper.appendChild(option);
+            }
+        }
+        selectWrapper.size = Math.min(3, Object.keys(chores).length - 1);
+
+        childrenPara.appendChild(childrenLabel);
+        childrenPara.appendChild(selectWrapper);
 
 
-    div.appendChild(namePara);
-    div.appendChild(descPara);
-    div.appendChild(childrenPara);
+        div.appendChild(namePara);
+        div.appendChild(descPara);
+        div.appendChild(childrenPara);
 
 
-    // save and cancel button
-    const buttonPara = document.createElement("p");
+        // save and cancel button
+        const buttonPara = document.createElement("p");
 
-    const saveUpdateBtn = document.createElement("button");
-    saveUpdateBtn.textContent = "Save changes";
-    saveUpdateBtn.addEventListener("click", saveUpdate);
+        const saveUpdateBtn = document.createElement("button");
+        saveUpdateBtn.textContent = "Save changes";
+        saveUpdateBtn.addEventListener("click", (event) => {
+            saveUpdate(event, targetChore, targetChoreChildren);
+        });
 
-    const cancelUpdateBtn = document.createElement("button");
-    cancelUpdateBtn.textContent = "Cancel";
+        const cancelUpdateBtn = document.createElement("button");
+        cancelUpdateBtn.textContent = "Cancel";
 
-    cancelUpdateBtn.addEventListener("click", (e) => {
-        e.preventDefault();
+        cancelUpdateBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            while (choreListItem.firstChild) {
+                choreListItem.removeChild(choreListItem.firstChild);
+            }
+            for (const child of deletedChildren) {
+                choreListItem.appendChild(child);
+            }
+        });
+
+        buttonPara.appendChild(saveUpdateBtn);
+        buttonPara.appendChild(cancelUpdateBtn);
+
+        formElem.appendChild(div);
+        formElem.appendChild(buttonPara);
+
+
+        const deletedChildren = []; // save deleted children for cancel update
         while (choreListItem.firstChild) {
-            choreListItem.removeChild(choreListItem.firstChild);
+            const deletedChild = choreListItem.removeChild(choreListItem.firstChild);
+            deletedChildren.push(deletedChild);
         }
-        for (const child of deletedChildren) {
-            choreListItem.appendChild(child);
-        }
-    });
 
-    buttonPara.appendChild(saveUpdateBtn);
-    buttonPara.appendChild(cancelUpdateBtn);
+        choreListItem.appendChild(formElem);
 
-    formElem.appendChild(div);
-    formElem.appendChild(buttonPara);
-
-
-    const deletedChildren = []; // save deleted children for cancel update
-    while (choreListItem.firstChild) {
-        const deletedChild = choreListItem.removeChild(choreListItem.firstChild);
-        deletedChildren.push(deletedChild);
-    }
-
-    choreListItem.appendChild(formElem);
-
+    })
 }
 
-function saveUpdate(event) {
+function saveUpdate(event, targetChore, targetChoreChildren) {
     const target = event.target; // button
     const form = target.parentNode.parentNode;
 
     const updateNameInput = document.querySelector("#newName");
     const updateDescInput = document.querySelector("#newDesc");
     const updateChildrenSelect = document.querySelector("#newChildren");
-    const choreKey = Number(form.parentNode.getAttribute("data-item-id"));
+    const targetChoreId = Number(form.parentNode.getAttribute("data-item-id"));
+
 
     updateNameInput.setCustomValidity("");
 
     if (!updateNameInput.validity.valid) {
         return;
     }
+
     const newName = updateNameInput.value.trim();
-
-    for (const chore of allChores) {
-        if (chore.id !== choreKey && newName === chore.name) {
-            updateNameInput.setCustomValidity(`Please choose another name. Chore "${newName}" already exists.`);
-            return;
-        }
-    }
     event.preventDefault();
-
    
-  
-    // save to db
-    const transaction = db.transaction(["chores_os"], "readwrite");
-    const objectStore = transaction.objectStore("chores_os");
 
-    const readRequest = objectStore.get(choreKey);
+    // save to db
+    const transaction = db.transaction(["chores_os", "connections_os"], "readwrite");
+    const choresObjectStore = transaction.objectStore("chores_os");
+
+    const readRequest = choresObjectStore.get(targetChoreId);
 
     readRequest.addEventListener("success", (e) => {
         const item = e.target.result;
         item.name = newName;
         item.desc = updateDescInput.value;
-        const newChildren = [];
-        for (const option of updateChildrenSelect.children) {
-            if (option.selected) {
-                newChildren.push(Number(option.value));
+
+        choresObjectStore.put(item);
+
+    })
+
+    const connsObjectStore = transaction.objectStore("connections_os");
+    for (const option of updateChildrenSelect.children) {
+        const childChoreId = Number(option.value);
+        if (option.selected) {
+            // add if not existed
+            if (!targetChoreChildren.includes(childChoreId)) {
+                const item = {
+                    parent: targetChoreId,
+                    child: childChoreId
+                }
+                connsObjectStore.add(item);
             }
+ 
+        } else {
+            // remove this edge if exist
+            if (targetChoreChildren.includes(childChoreId)) {
+                connsObjectStore.delete([targetChoreId, childChoreId]);
+            }
+
         }
-        item.children = newChildren;
+    }
 
-        const requestUpdate = objectStore.put(item);
-        requestUpdate.addEventListener("success", () => {
-            console.log("Update successful");
-            readAndDisplayAllChores();
-        })
-
+    transaction.addEventListener("complete", (event) => {
+        readAndDisplayAllChores();
     })
 }
 
-function createIndexMap(chores) {
-    const indexMap = {}; // map item key to index in chores
-    const n = chores.length;
 
-    for (let i = 0; i < n; i++) {
-        indexMap[chores[i].id] = i;
-    }
-    return indexMap;
-}
-
-function sortItems() {
-    cyclicPair = [];
-    // map item keys to index
-    // create adjacency list
-    const indexMap = createIndexMap(allChores);
-    const n = allChores.length;
-
-    const adjacencyList = [];
-    for (let i = 0; i < n; i++) {
-        adjacencyList.push([]); // list to store i's children
-
-        const childKeys = allChores[i].children;
-    
-        for (const childKey of childKeys) {
-            adjacencyList[i].push(indexMap[childKey]);
-        }
-    }
-    
-    const order = ordering(n, adjacencyList);
-
-    const sortedChores = [];
-    for (const index of order) {
-        sortedChores.push(allChores[index]);
-    }
-
-    return sortedChores;
-}
-
-
-function dfs(node, adjacencyList, status, ordering) {
+function dfs(node, connections, status, ordering) {
     // return true iff done explore tree rooted at i without cycles dected
     // return false otherwise
     status[node] = -1;
 
     // explore its children
-    for (const child of adjacencyList[node]) {
+    for (const child of connections[node]) {
         if (status[child] === -1) {
             cyclicPair = [node, child];
             return false;
         }
         if (status[child] === 0) {
-            isAcyclic = dfs(child, adjacencyList, status, ordering);
+            isAcyclic = dfs(child, connections, status, ordering);
             if (!isAcyclic) {
                 return false;
             }
@@ -562,27 +678,22 @@ function dfs(node, adjacencyList, status, ordering) {
     return true;
 }
 
-function ordering(numNodes, adjacencyList) {
-    // all nodes are identified by index
+
+function ordering(chores, connections) {
     // dfs on the graph, get order
 
-    if (adjacencyList.length != numNodes) {
-        throw Error("");
-    }    
-
-
-    const status = []; // visit status of each node. 0: not visited, -1: being explored its descendants, 1: its tree visited
+    const status = {}; // visit status of each node. 0: not visited, -1: being explored its descendants, 1: its tree visited
  
-    for (let i = 0; i < numNodes; i++) {
-        status.push(0);
+    for (const choreId in chores) {
+        status[choreId] = 0;
     }
 
     // run dfs
     const ordering = []; // append from the start
     
-    for (let i = 0; i < numNodes; i++) {
-        if (status[i] === 0) {
-            const isAcyclic = dfs(i,  adjacencyList, status, ordering);
+    for (const choreId in chores) {
+        if (status[choreId] === 0) {
+            const isAcyclic = dfs(choreId,  connections, status, ordering);
             if (!isAcyclic) { // cycle detected
                 return [];
             }
