@@ -1,0 +1,20 @@
+{
+  "name": "chore-buddy",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "## What does the app do? Chore Buddy organizes household chores in a logical order by analyzing user-defined tasks and their interrelationships. The app idenitifies key \"ancestor\" chores that need to be completed first to prevent delays in dependent chores. The app also detects cycles (i.e. loops) in the chore sequences if existed.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.3"
+  }
+}
