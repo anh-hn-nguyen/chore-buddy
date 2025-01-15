@@ -8,7 +8,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Henny+Penny&display=swap" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Atma:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="style.css">
-        <script src="index.js" defer></script>
+        <script src="index.js" type="module"></script>
     </head>
     <body>
         <header>
@@ -16,6 +16,8 @@
                 <ul>
                     <li><a href="">Home</a></li>
                     <li><a href="">About</a></li>
+                    <li><a href="" id="loginLink">Login</a></li>
+                    <li><a href="" id="signupLink">Sign up</a></li>
                 </ul>
             </nav>
             <div>
@@ -23,8 +25,46 @@
             </div>
             <h1>Welcome to your Chore Buddy</h1>
             <p>Welcome to <strong>Chore Buddy</strong>—your cheerful sidekick in tackling the wild world of chores! With Chore Buddy, not only can you add your tasks, you can also choose those sneaky little <em>"child"</em> chores that can only pop up once their big sibling is complete. Let Chore Buddy help you organize all your chores in the perfect order, making your adventures feel like a breeze!</p>
+            
         </header>
         <main>
+            <form id="signupForm">
+                <h2>Sign Up</h2>
+                <p>
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username">
+                </p>
+                <p>
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password">
+                </p>
+                <p>
+                    <label for="firstname">First Name:</label>
+                    <input type="text" id="firstname" name="firstname">
+                </p>
+                <p>
+                    <label for="lastname">Last Name:</label>
+                    <input type="text" id="lastname" name="lastname">
+                </p>
+                <p>
+                    <button type="submit" id="signupBtn">Create account</button>
+                </p>
+
+            </form>
+            <form id="loginForm">
+                <h2>Login</h2>
+                <p>
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username">
+                </p>
+                <p>
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password">
+                </p>
+                <p>
+                    <button type="submit" id="loginBtn">Login</button>
+                </p>              
+            </form>
             <nav>            
                 <button type="submit" id="sortChores">Sort chores</button>
                 <button type="submit" id="refresh">Refresh</button>
