@@ -59,10 +59,6 @@ function greetings() {
 
 // check if account has been saved
 function init() {
-  // hide sign up login forms
-  loginForm.style.display = "none";
-  signupForm.style.display = "none";
-
   // user-data
   const token = localStorage.getItem("authToken");
   if (token) {
