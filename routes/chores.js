@@ -14,6 +14,13 @@ router.get("/", async function (req, res, next) {
   });
 });
 
+router.get("/:choreId", async function (req, res, next) {
+  const { choreId } = req.params;
+  const item = await Chore.findById(choreId).exec();
+
+  res.status(200).json(item);
+})
+
 router.post("/", async function (req, res) {
   const userId = req.userId;
   const newChore = new Chore({

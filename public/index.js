@@ -1,5 +1,6 @@
 import { ClientDb, initIndexedDb, ServerDb } from "./database.js";
 
+const h1 = document.querySelector("h1");
 const choreNameInput = document.querySelector("#choreName");
 const choreDescInput = document.querySelector("#choreDesc");
 const choresChildrenSelect = document.querySelector("#choresChildrenSelect");
@@ -9,17 +10,51 @@ const signupLink = document.querySelector("#signupLink");
 const loginLink = document.querySelector("#loginLink");
 const signupForm = document.querySelector("#signupForm");
 const loginForm = document.querySelector("#loginForm");
+const loginSubmitBtn = document.querySelector("#loginSubmitBtn");
+const signupSubmitBtn = document.querySelector("#signupSubmitBtn");
+
+const loginUsernameInput = document.querySelector("#loginUsername");
+const loginPasswordInput = document.querySelector("#loginPassword");
+
+const signupUsernameInput = document.querySelector("#username");
+const signupPasswordInput = document.querySelector("#password");
+const signupFirstnameInput = document.querySelector("#firstname");
+const signupLastnameInput = document.querySelector("#lastname");
 
 const choresList = document.querySelector("main section ul");
 const sortChoresBtn = document.querySelector("#sortChores");
 const refreshBtn = document.querySelector("#refresh");
 const choresListStatusPara = document.querySelector("#choreListStatus");
 
+const navList = document.querySelector("header nav ul"); 
 const main = document.querySelector("main");
 
 let cyclicPair = [];
 let dbDriver;
+function addLogout() {
+  const li = document.createElement("li");
+  const a = document.createElement("a");
 
+  a.href = "";
+  a.textContent = "Logout";
+
+  li.appendChild(a);
+  navList.appendChild(li);
+  li.addEventListener("click", (event) => {
+    // delete token
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("uFirstName");
+    localStorage.removeItem("uLastName");
+    window.location.reload();
+  })
+}
+
+function greetings() {
+  const firstName = localStorage.getItem("uFirstName");
+  const lastName = localStorage.getItem("uLastName");
+
+  h1.textContent = `Welcome back, ${firstName} ${lastName}`;
+}
 // init page
 
 // check if account has been saved
@@ -34,22 +69,22 @@ function init() {
     loginLink.style.display = "none";
     signupLink.style.display = "none";
 
-
+    // add logout link
+    addLogout();
     // greetings user first name + last name
-
+    greetings();
     // init db driver
     dbDriver = new ServerDb(token);
+    
+
     readAndDisplayAllChores();
   } else {
-  // database
+    // database
     initIndexedDb().then((db) => {
       dbDriver = new ClientDb(db);
       readAndDisplayAllChores();
     });
-
   }
-
-
 }
 
 init();
@@ -77,6 +112,58 @@ signupLink.addEventListener("click", (event) => {
   }
   signupForm.style.display = "block";
 });
+
+loginSubmitBtn.addEventListener("click", (event) => {
+  event.preventDefault();
+  
+  // login
+  const url = window.location.origin;
+  const headers = { "Content-Type": "application/json" };
+  fetch(`${url}/users/login`, {
+    headers: headers,
+    body: JSON.stringify({
+      username: loginUsernameInput.value,
+      password: loginPasswordInput.value
+    }),
+    method: 'POST'
+  })
+    .then((res) => {
+      return res.json();
+    })
+    .then((json) => {
+      if (json.error) {
+        alert("Authentication error");
+        return;
+      }
+      // set token
+      const { first_name, last_name, token } = json;
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("uFirstName", first_name);
+      localStorage.setItem("uLastName", last_name);
+      window.location.reload();
+    })
+})
+
+signupSubmitBtn.addEventListener("click", (event) => {
+  event.preventDefault();
+  const url = window.location.origin;
+  const headers = { "Content-Type": "application/json" };
+  fetch(`${url}/users/signup`, {
+    headers: headers,
+    body: JSON.stringify({
+      username: signupUsernameInput.value,
+      password: signupPasswordInput.value,
+      first_name: signupFirstnameInput.value,
+      last_name: signupLastnameInput.value
+    }),
+    method: 'POST'
+  })
+    .then((res) => res.json())
+    .then((json) => {
+      window.location.reload();
+    })
+    .catch((error) => alert(error));
+})
 
 sortChoresBtn.addEventListener("click", (event) => {
   event.preventDefault();
@@ -130,13 +217,13 @@ addChoreBtn.addEventListener("click", (event) => {
 
   for (const option of choresChildrenSelect.children) {
     if (option.selected) {
-      children.push(Number(option.value));
+      children.push(option.value);
     }
   }
 
   const newChore = {
     name: newName,
-    desc: choreDescInput.value,
+    description: choreDescInput.value,
   };
 
   dbDriver
@@ -162,13 +249,13 @@ addChoreBtn.addEventListener("click", (event) => {
 function readAndDisplayAllChores() {
   const p = Promise.all([dbDriver.getChores(), dbDriver.getConnections()]);
   p.then(([chores, conns]) => {
-    // loadData(chores, conns);
+    console.log(chores);
     displayData(chores, conns);
-    updateSelectOptions(chores); // in "Add Chore" form
+    displaySelectOptions(chores); // in "Add Chore" form
   });
 }
 
-function updateSelectOptions(chores) {
+function displaySelectOptions(chores) {
   while (choresChildrenSelect.firstChild) {
     choresChildrenSelect.removeChild(choresChildrenSelect.firstChild);
   }
@@ -234,7 +321,7 @@ function displayData(chores, conns, order = []) {
     h3.textContent = chore.name;
 
     const para = document.createElement("p");
-    para.textContent = chore.desc;
+    para.textContent = chore.description;
 
     // display children
     const childrenPara = document.createElement("p");
@@ -281,36 +368,10 @@ function displayData(chores, conns, order = []) {
 
 function deleteItem(event) {
   // delete from the db
-  const choreKey = Number(
-    event.target.parentNode.parentNode.getAttribute("data-item-id")
-  );
+  const choreKey = event.target.parentNode.parentNode.getAttribute("data-item-id");
 
-  // read the chore children
-  dbDriver.getChildren(choreKey);
-
-  // read the chore parents
-  dbDriver.getParents(choreKey);
-
-  Promise.all([
-    dbDriver.getChildren(choreKey),
-    dbDriver.getParents(choreKey),
-  ]).then(([targetChoreChildren, targetChoreParents]) => {
-    // pairs of connections to delete
-    const pairs = [];
-    // delete chore children
-    for (const childKey of targetChoreChildren) {
-      pairs.push([choreKey, childKey]);
-    }
-
-    // delete chore parents
-    for (const parentKey of targetChoreParents) {
-      pairs.push([parentKey, choreKey]);
-    }
-    const p1 = dbDriver.deleteChore(choreKey);
-    const p2 = pairs.map((pair) => dbDriver.deleteConnection(pair[0], pair[1]));
-
-    Promise.all([p1, ...p2]).then(() => readAndDisplayAllChores());
-  });
+  dbDriver.deleteChore(choreKey)
+    .then(() => readAndDisplayAllChores());
 }
 
 function updateItem(event) {
@@ -320,8 +381,7 @@ function updateItem(event) {
 
   // parent node = list item
   const choreListItem = target.parentNode.parentNode;
-  const targetChoreId = Number(choreListItem.getAttribute("data-item-id"));
-
+  const targetChoreId = choreListItem.getAttribute("data-item-id");
   Promise.all([dbDriver.getChores(), dbDriver.getChildren(targetChoreId)]).then(
     ([chores, targetChoreChildren]) => {
       // display update form
@@ -350,7 +410,7 @@ function updateItem(event) {
       const descInput = document.createElement("textarea");
       descInput.id = "newDesc";
       descInput.rows = "3";
-      descInput.value = targetChore.desc;
+      descInput.value = targetChore.description;
       descPara.appendChild(descLabel);
       descPara.appendChild(descInput);
 
@@ -364,7 +424,7 @@ function updateItem(event) {
       selectWrapper.id = "newChildren";
 
       for (const [choreKey, chore] of Object.entries(chores)) {
-        const choreId = Number(choreKey);
+        const choreId = choreKey;
         if (choreId !== targetChoreId) {
           const option = document.createElement("option");
 
@@ -432,26 +492,27 @@ function saveUpdate(event, targetChoreChildren) {
   const updateNameInput = document.querySelector("#newName");
   const updateDescInput = document.querySelector("#newDesc");
   const updateChildrenSelect = document.querySelector("#newChildren");
-  const targetChoreId = Number(form.parentNode.getAttribute("data-item-id"));
+  const targetChoreId = form.parentNode.getAttribute("data-item-id");
 
-  // updateNameInput.setCustomValidity("");
+  updateNameInput.setCustomValidity("");
 
-  // if (!updateNameInput.validity.valid) {
-  //   return;
-  // }
+  if (!updateNameInput.validity.valid) {
+    return;
+  }
   const newName = updateNameInput.value.trim();
   event.preventDefault();
 
-  dbDriver.getChore(targetChoreId)
+  dbDriver
+    .getChore(targetChoreId)
     .then((item) => {
       const promises = [];
       item.name = newName;
-      item.desc = updateDescInput.value;
+      item.description = updateDescInput.value;
 
       promises.push(dbDriver.updateChore(targetChoreId, item));
 
       for (const option of updateChildrenSelect.children) {
-        const childChoreId = Number(option.value);
+        const childChoreId = option.value;
         if (option.selected) {
           // add if not existed
           if (!targetChoreChildren.includes(childChoreId)) {

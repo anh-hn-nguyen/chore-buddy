@@ -29,8 +29,9 @@ router.post("/", async function (req, res, next) {
 
 // get all relationships with parent = parentId
 router.get("/parents/:parentId", async function (req, res, next) {
-    const parentId = req.params;
-    const [ totalCount, items ] = Promise.all([
+    const { parentId } = req.params;
+
+    const [ totalCount, items ] = await Promise.all([
         Relationship.countDocuments({ parent: parentId }).exec(),
         Relationship.find({ parent: parentId }).exec()
     ]);
@@ -42,7 +43,18 @@ router.get("/parents/:parentId", async function (req, res, next) {
 });
 
 // get all relationships with child = childId
-// router.get("/children/:childId");
+router.get("/children/:childId", async function(req, res, next) {
+  const { childId } = req.params;
+  const [ totalCount, items ] = await Promise.all([
+      Relationship.countDocuments({ child: childId }).exec(),
+      Relationship.find({ child: childId }).exec()
+  ]);
+
+  res.status(200).json({
+      total_count: totalCount,
+      items: items
+  })
+});
 
 router.delete("/parents/:parentId/children/:childId", async function (req, res, next) {
     const { parentId, childId } = req.params;

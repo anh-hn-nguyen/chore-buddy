@@ -1,4 +1,5 @@
 function initIndexedDb() {
+  let db;
   return new Promise((resolve, reject) => {
     // open database chores
     const openRequest = window.indexedDB.open("chores_db", 1);
@@ -16,7 +17,7 @@ function initIndexedDb() {
 
       // define schema of the object store
       choresObjectStore.createIndex("name", "name", { unique: true });
-      choresObjectStore.createIndex("desc", "desc", { unique: false });
+      choresObjectStore.createIndex("description", "description", { unique: false });
 
       // create relationship object store
       const connsObjectStore = db.createObjectStore("connections_os", {
@@ -67,7 +68,7 @@ class ClientDb {
 
         if (cursor) {
           const chore = cursor.value;
-          chores[chore.id] = chore;
+          chores[chore.id.toString()] = chore;
           cursor.continue();
         } else {
           resolve(chores);
@@ -87,8 +88,8 @@ class ClientDb {
 
         if (cursor) {
           const conn = cursor.value;
-          const parent = conn.parent;
-          const child = conn.child;
+          const parent = conn.parent.toString();
+          const child = conn.child.toString();
 
           if (!Object.hasOwn(conns, parent)) {
             conns[parent] = [];
@@ -102,6 +103,7 @@ class ClientDb {
     });
   }
   getChore(choreId) {
+    choreId = Number(choreId);
     return new Promise((resolve, reject) => {
       // save to db
       const transaction = this.db.transaction(
@@ -129,13 +131,15 @@ class ClientDb {
       const addRequest = choresObjectStore.add(newChore); // carry out transaction
 
       addRequest.addEventListener("success", (event) => {
-        const choreId = event.target.result;
+        const choreId = event.target.result.toString();
         resolve(choreId);
       });
     });
   }
 
   addConnection(parentId, childId) {
+    parentId = Number(parentId);
+    childId = Number(childId);
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(
         ["chores_os", "connections_os"],
@@ -154,6 +158,7 @@ class ClientDb {
   }
 
   deleteChore(choreId) {
+    choreId = Number(choreId);
     return new Promise((resolve, reject) => {
       let targetChoreChildren = [];
       let targetChoreParents = [];
@@ -222,6 +227,8 @@ class ClientDb {
   }
 
   deleteConnection(parentId, childId) {
+    parentId = Number(parentId);
+    childId = Number(childId);
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(["connections_os"], "readwrite");
       const connectionsObjectStore = transaction.objectStore("connections_os");
@@ -234,6 +241,7 @@ class ClientDb {
   }
 
   updateChore(choreId, updatedChore) {
+    choreId = Number(choreId);
     return new Promise((resolve, reject) => {
       // save to db
       const transaction = this.db.transaction(["chores_os"], "readwrite");
@@ -244,7 +252,7 @@ class ClientDb {
       readRequest.addEventListener("success", (e) => {
           const item = e.target.result;
           item.name = updatedChore.name;
-          item.desc = updatedChore.desc;
+          item.description = updatedChore.description;
 
           choresObjectStore.put(item);
 
@@ -257,6 +265,7 @@ class ClientDb {
   }
 
   getChildren(choreId) {
+    choreId = Number(choreId);
     return new Promise((resolve, reject) => {
       const children = [];
       // create transaction to read chore and its edges
@@ -273,7 +282,7 @@ class ClientDb {
       childrenReadRequest.addEventListener("success", (event) => {
         const conns = event.target.result;
         for (const conn of conns) {
-          children.push(conn.child);
+          children.push(conn.child.toString());
         }
         resolve(children);
       });
@@ -283,6 +292,7 @@ class ClientDb {
   }
 
   getParents(choreId) {
+    choreId = Number(choreId);
     return new Promise((resolve, reject) => {
       const parents = [];
       // read the chore parents
@@ -297,7 +307,7 @@ class ClientDb {
       parentsReadRequest.addEventListener("success", (event) => {
         const conns = event.target.result;
         for (const conn of conns) {
-          parents.push(conn.parent);
+          parents.push(conn.parent.toString());
         }
         resolve(parents);
       });
@@ -318,14 +328,15 @@ class ServerDb {
 
   getChores() {
     return new Promise((resolve, reject) => {
-      const headers = { "Authorization": this.token };
+      const headers = { "Authorization" : this.token };
       fetch(`${this.baseUrl}/chores`, { headers })
         .then((result) => result.json())
-        .then((result) => {
-          const items = result.items;
+        .then((json) => {
+          const items = json.items;
           // map array of items to map {id: item}
           const chores = {};
           for (const item of items) {
+            // item.id = item._id;
             chores[item._id] = item;
           }
           resolve(chores);
@@ -333,7 +344,153 @@ class ServerDb {
     })
   }
 
-  
+  getConnections() {
+    return new Promise((resolve, reject) => {
+      const headers = { "Authorization": this.token };
+      fetch(`${this.baseUrl}/relationships`, { headers })
+        .then((result) => result.json())  
+        .then((result) => {
+          const items = result.items;
+          const connections = {};
+          for (const item of items) {
+            const parent = item.parent;
+            const child = item.child;
+
+            if (!Object.hasOwn(connections, parent)) {
+              connections[parent] = [];
+            }
+            connections[parent].push(child);
+          }
+          resolve(connections);
+        })
+    })
+  }
+
+  getChore(choreId) {
+    choreId = choreId;
+    return new Promise((resolve, reject) => {
+      const headers = { "Authorization": this.token };
+      fetch(`${this.baseUrl}/chores/${choreId}`, { headers })
+      .then((res) => res.json())
+      .then((item) => {
+        resolve(item);
+      })
+    })
+
+  }
+
+  addChore(newChore) {
+    return new Promise((resolve, reject) => {
+      const headers = { 
+        "Authorization": this.token,
+        "Content-Type": "application/json"
+      };
+      fetch(`${this.baseUrl}/chores`, {
+        headers: headers,
+        method: 'POST',
+        body: JSON.stringify(newChore)
+      })
+        .then((res) => res.json())
+        .then((jsonBody) => resolve(jsonBody.id));
+    })
+  }
+
+  addConnection(parentId, childId) {
+    parentId = parentId;
+    childId = childId;
+    
+    return new Promise((resolve, reject) => {
+      const headers = { 
+        "Authorization": this.token,
+        "Content-Type": "application/json"
+      };
+      fetch(`${this.baseUrl}/relationships`, {
+        headers: headers,
+        method: 'POST',
+        body: JSON.stringify({
+          parent: parentId,
+          child: childId
+        })
+      })
+        .then((res) => res.json())
+        .then((jsonBody) => resolve(jsonBody.id));
+    })
+
+  }
+
+  deleteChore(choreId) {
+    return new Promise((resolve, reject) => {
+      const headers = { "Authorization": this.token };
+      fetch(`${this.baseUrl}/chores/${choreId}`, {
+        headers: headers,
+        method: 'DELETE'
+      })
+        .then(() => resolve())
+    })
+  }
+
+
+  deleteConnection(parentId, childId) {
+    return new Promise((resolve, reject) => {
+      const headers = { "Authorization": this.token };
+      fetch(`${this.baseUrl}/relationships/parents/${parentId}/children/${childId}`, {
+        headers: headers,
+        method: 'DELETE'
+      })
+        .then(() => resolve())
+    })  
+  }
+
+  updateChore(choreId, updatedChore) {
+    return new Promise((resolve, reject) => {
+      const headers = { 
+        "Authorization": this.token,
+        "Content-Type": "application/json"
+      };
+      fetch(`${this.baseUrl}/chores/${choreId}`, {
+        headers: headers,
+        method: 'PUT',
+        body: JSON.stringify(updatedChore)
+      })
+        .then(() => resolve());
+    })
+  }
+
+  getChildren(choreId) {
+    return new Promise((resolve, reject) => {
+      const headers = { "Authorization": this.token };
+      fetch(`${this.baseUrl}/relationships/parents/${choreId}`, {
+        headers: headers,
+      })
+        .then((res) => res.json())
+        .then((json) => {
+          const children = [];
+          const conns = json.items;
+          for (const conn of conns) {
+            children.push(conn.child);
+          }
+          resolve(children);
+        });
+    })
+  }
+
+  getParents(choreId) {
+    return new Promise((resolve, reject) => {
+      const headers = { "Authorization": this.token };
+      fetch(`${this.baseUrl}/relationships/children/${choreId}`, {
+        headers: headers,
+      })
+        .then((res) => res.json())
+        .then((json) => {
+          const parents = [];
+          const conns = json.items;
+          for (const conn of conns) {
+            parents.push(conn.parent);
+          }
+          resolve(parents);
+        });
+    })
+  }
 }
 
 export { ServerDb, ClientDb, initIndexedDb };
